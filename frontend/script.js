@@ -76,7 +76,7 @@ function createBlogPostCard(blogPost){
             return;
         }
         try{
-            const response = await fetch(`/blogs/like/${blogPost.id}`,{
+            const response = await fetch(`/blogs/like/${blogPost._id}`,{
                 method: "PUT",
                 headers: {
                     'Content-Type': 'application/json'
@@ -94,10 +94,18 @@ function createBlogPostCard(blogPost){
         }
     })
 
+    const commentsElement = createCommentsElement(blogPost);
+
     cardElement.appendChild(titleElement);
     cardElement.appendChild(authorElement);
     cardElement.appendChild(postLikesButton);
     cardElement.appendChild(contentElement);
+    cardElement.appendChild(commentsElement);
+
+    if(loggedIn){
+        const commentForm = createCommentForm(blogPost._id);
+        cardElement.appendChild(commentForm);
+    }
 
     return cardElement;
 }
@@ -206,6 +214,7 @@ function createCommentsElement(blogPost){
 
         const commentLikesButton = createLikeButton(comment.likes);
 
+
         commentItem.appendChild(userIcon);
         commentItem.appendChild(commentContent);
         commentItem.appendChild(commentLikesButton);
@@ -216,7 +225,7 @@ function createCommentsElement(blogPost){
                 return;
             }
             try{
-                const response = await fetch(`/blogs/${blogPost.id}/comment/like/${index}`,{
+                const response = await fetch(`/blogs/${blogPost._id}/comment/like/${index}`,{
                     method: "PUT",
                     headers: {
                         'Content-Type': 'application/json'
@@ -238,3 +247,51 @@ function createCommentsElement(blogPost){
     return commentsElement;
 }
 
+function createCommentForm(blogPostId){
+    const commentForm = document.createElement('form');
+    commentForm.classList.add('comment-form');
+
+    const commentTextArea = document.createElement('textarea');
+    commentTextArea.setAttribute('placeholder', 'Write your comment here...');
+    commentTextArea.setAttribute('name', "comment");
+    commentTextArea.classList.add('form-control','mb-2');
+    commentForm.appendChild(commentTextArea);
+
+    const submitButton = document.createElement('button');
+    submitButton.setAttribute('type', 'submit');
+    submitButton.textContent = 'submit';
+    submitButton.classList.add('btn', 'btn-primary');
+    commentForm.appendChild(submitButton);
+
+    commentForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if(!loggedIn){
+            console.log('Please login to submit a comment.');
+            return;
+        }
+        const formData = new FormData(commentForm);
+        const commentContent = formData.get('comment');
+        try{
+            const response = await fetch(`/blogs/${blogPostId}/comment`,{
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({content: commentContent, userID: userId})
+            });
+            if(!response.ok){
+                throw new Error('Failed to add comment. Please try again.');
+            }
+
+            commentForm.reset();
+            console.log('Comment added successfully!');
+            await fetchAndDisplayBlogPosts();
+        }
+        catch(error){
+            console.error('Error', error.message);
+        }
+    });
+
+    return commentForm;
+}
